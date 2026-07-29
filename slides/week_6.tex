@@ -1,0 +1,1270 @@
+\documentclass{beamer}
+\usetheme{Madrid}
+\usecolortheme{default}
+\usepackage{listings}
+\usepackage{color}
+\usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+
+% Define code style
+\lstset{
+    language=Python,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue},
+    commentstyle=\color{gray},
+    stringstyle=\color{red},
+    breaklines=true,
+    showstringspaces=false,
+    tabsize=2,
+    backgroundcolor=\color{lightgray!20}
+}
+
+\title{Week 6: From Random Forest to LightGBM}
+\subtitle{Mastering Gradient Boosting for Medical Data}
+\author{MDST Project: Heart Failure Survival Analysis}
+\date{2026}
+
+\begin{document}
+
+%=============================================================
+% TITLE SLIDE
+%=============================================================
+\frame{\titlepage}
+
+%=============================================================
+% SLIDE 1: Learning Objectives
+%=============================================================
+\begin{frame}[fragile]
+\frametitle{Learning Objectives}
+
+By the end of this week, you will:
+
+\begin{itemize}
+    \item[\checkmark] Understand \textbf{Random Forest baseline} \\
+    \quad (parallel independent trees from Week 5)
+
+    \vspace{0.3cm}
+    \item[\checkmark] Learn \textbf{Gradient Boosting concept} \\
+    \quad (sequential error correction)
+
+    \vspace{0.3cm}
+    \item[\checkmark] Master \textbf{LightGBM} \\
+    \quad (modern leaf-wise boosting with hyperparameter optimization)
+
+    \vspace{0.3cm}
+    \item[\checkmark] Evaluate using \textbf{4 metrics} \\
+    \quad (Accuracy, F1-Score, ROC-AUC, MCC)
+
+    \vspace{0.3cm}
+    \item[\checkmark] Get \textbf{hands-on practice} \\
+    \quad (hyperparameter tuning with Optuna)
+\end{itemize}
+
+\end{frame}
+
+%=============================================================
+% SLIDE 2: The Four Metrics
+%=============================================================
+\begin{frame}[fragile]
+\frametitle{Evaluation Metrics: Following Chicco \& Jurman (2020)}
+
+\vspace{-0.3cm}
+{\small
+\begin{tabular}{|p{1.5cm}|p{2.5cm}|p{2.5cm}|p{1.8cm}|}
+\hline
+\textbf{Metric} & \textbf{Formula} & \textbf{Interpretation} & \textbf{Best For} \\
+\hline
+Accuracy & $\frac{TP+TN}{TP+TN+FP+FN}$ & \% correct & Balanced \\
+\hline
+F1-Score & $2 \cdot \frac{P \cdot R}{P+R}$ & Precision-Recall & Imbalanced \\
+\hline
+ROC-AUC & Area under curve & Ranking quality & Threshold-free \\
+\hline
+MCC & Correlation coeff. & Most robust & Binary imbalanced \\
+\hline
+\end{tabular}
+}
+
+\vspace{0.5cm}
+\textbf{Key Insight:} No single metric tells the full story.
+
+\vspace{0.3cm}
+\begin{center}
+    \textit{Report all four metrics for comprehensive evaluation}
+\end{center}
+
+\end{frame}
+
+%=============================================================
+% SLIDE 3: Why Multiple Metrics Matter
+%=============================================================
+\begin{frame}[fragile]
+\frametitle{Why Multiple Metrics Matter: A Real Example}
+
+\textbf{Scenario:} Heart failure classification (10\% positive class)
+
+\vspace{0.3cm}
+\begin{center}
+{\small
+\begin{tabular}{|l|c|c|c|c|}
+\hline
+\textbf{Model} & \textbf{Accuracy} & \textbf{F1} & \textbf{ROC-AUC} & \textbf{MCC} \\
+\hline
+A: Always predict ``No'' & 90\% & 0\% & 50\% & 0\% \\
+\hline
+B: Balanced predictions & 75\% & 60\% & 85\% & 50\% \\
+\hline
+\end{tabular}
+}
+\end{center}
+
+\vspace{0.4cm}
+\textbf{The Problem:} Model A looks excellent by accuracy alone!
+
+\vspace{0.2cm}
+\textbf{The Solution:} F1, ROC-AUC, and MCC expose the failure.
+
+\vspace{0.3cm}
+\begin{alertblock}{Lesson}
+Accuracy alone is \textbf{misleading} on imbalanced data. \\
+Use MCC and ROC-AUC as primary metrics.
+\end{alertblock}
+
+\end{frame}
+
+%=============================================================
+% SLIDE 4: Random Forest Recap
+%=============================================================
+\begin{frame}[fragile]
+\frametitle{Random Forest: Parallel Learning (Week 5 Review)}
+
+\textbf{How It Works:}
+
+\begin{center}
+\begin{tabular}{c}
+Bootstrap sampling (random rows with replacement) \\
+$\downarrow$ \\
+Train trees independently on different samples \\
+$\downarrow$ \\
+Each tree sees random subset of features \\
+$\downarrow$ \\
+Majority vote on final prediction \\
+\end{tabular}
+\end{center}
+
+\vspace{0.4cm}
+\textbf{Key Characteristics:}
+
+\begin{itemize}
+    \item \textbf{Process:} Parallel (all trees trained simultaneously)
+    \item \textbf{Tree depth:} Deep (10-12 levels)
+    \item \textbf{Learning mechanism:} Variance reduction via averaging
+    \item \textbf{Speed:} Fast training
+    \item \textbf{Role:} Good baseline for Week 5
+\end{itemize}
+
+\end{frame}
+
+%=============================================================
+% SLIDE 5: RF In Action
+%=============================================================
+\begin{frame}[fragile]
+\frametitle{Random Forest In Action: Voting Example}
+
+\textbf{Example with 4 trees:}
+
+\vspace{0.2cm}
+{\scriptsize
+\begin{lstlisting}
+Original data: [row1, row2, row3, row4, row5]
+
+Tree 1 (bootstrap sample): [row1, row1, row3, row5, row5] → Yes
+Tree 2 (bootstrap sample): [row2, row3, row3, row4, row5] → No
+Tree 3 (bootstrap sample): [row1, row2, row4, row4, row5] → Yes
+Tree 4 (bootstrap sample): [row2, row3, row4, row5, row5] → Yes
+
+Final Prediction: Yes  (3/4 trees agree = majority vote)
+\end{lstlisting}
+}
+
+\vspace{0.3cm}
+\textbf{Why Averaging Works:}
+
+\begin{itemize}
+    \item Each tree is a \textbf{high-variance} estimate (overfits to its sample)
+    \item Errors are \textbf{uncorrelated} across samples
+    \item Ensemble average has \textbf{lower variance} than individual trees
+    \item Mathematical insight: $\text{Var}(\text{average}) = \frac{\text{Var}}{n}$
+\end{itemize}
+
+\end{frame}
+
+%=============================================================
+% SLIDE 6: Gradient Boosting Paradigm
+%=============================================================
+\begin{frame}[fragile]
+\frametitle{Gradient Boosting: Sequential Learning Paradigm}
+
+\textbf{The Sequential Idea:}
+
+\begin{center}
+{\small
+\begin{tabular}{l}
+Iteration 1: Train Tree$_1$ on original data \\
+\\
+Iteration 2: Compute residuals (errors) from Tree$_1$ \\
+\quad\quad\quad\quad Train Tree$_2$ on these residuals \\
+\\
+Iteration 3: Compute residuals from Tree$_1$ + Tree$_2$ \\
+\quad\quad\quad\quad Train Tree$_3$ on these residuals \\
+\\
+\ldots repeat \ldots \\
+\\
+Final Prediction: Tree$_1$ + $\alpha$ Tree$_2$ + $\alpha$ Tree$_3$ + \ldots
+\end{tabular}
+}
+\end{center}
+
+\vspace{0.3cm}
+\begin{center}
+\textbf{\textcolor{red}{Each new tree focuses on fixing mistakes from previous trees}}
+\end{center}
+
+\end{frame}
+
+%=============================================================
+% SLIDE 7: Why GB Works Better
+%=============================================================
+\begin{frame}[fragile]
+\frametitle{Why Gradient Boosting Outperforms Random Forest}
+
+\begin{center}
+{\small
+\begin{tabular}{|l|c|c|}
+\hline
+\textbf{Aspect} & \textbf{Random Forest} & \textbf{Gradient Boosting} \\
+\hline
+\textbf{Bias Reduction} & No & \textcolor{green}{Yes} \\
+\hline
+\textbf{Variance Reduction} & \textcolor{green}{Yes} & \textcolor{green}{Yes} \\
+\hline
+\textbf{Tree Depth} & Deep (10-12) & Shallow (3-5) \\
+\hline
+\textbf{Can Learn Errors} & No & \textcolor{green}{Yes} \\
+\hline
+\textbf{Typical Accuracy} & $\sim$80-85\% & $\sim$85-90\% \\
+\hline
+\end{tabular}
+}
+\end{center}
+
+\vspace{0.4cm}
+\textbf{Mathematical Insight:}
+
+\begin{itemize}
+    \item \textbf{Random Forest:} $\text{Error} = \text{Bias}^2 + \text{Variance}$
+    \begin{itemize}
+        \item Reduces variance only
+        \item Asymptotically: Error $\approx$ Bias$^2$ (bottleneck)
+    \end{itemize}
+
+    \item \textbf{Gradient Boosting:} $\text{Error} = \text{Bias}^2 + \text{Variance}$
+    \begin{itemize}
+        \item Reduces \textbf{both} bias and variance
+        \item Better asymptotic error
+    \end{itemize}
+\end{itemize}
+
+\end{frame}
+
+%=============================================================
+% SLIDE 8: GB Learning From Residuals
+%=============================================================
+\begin{frame}[fragile]
+\frametitle{Gradient Boosting Example: Learning from Residuals}
+
+\textbf{Realistic Scenario:}
+
+\vspace{0.2cm}
+{\small
+\begin{lstlisting}
+Data samples: [(age=50, died=No),
+               (age=60, died=Yes),
+               (age=55, died=No)]
+
+Tree 1 predictions:  [0.0,  0.8,  0.2]
+Actual labels:       [0.0,  1.0,  0.0]
+Residuals:          [0.0, +0.2, -0.2]  ← Tree 2 focuses here
+
+Tree 2 learns:
+  - For sample 2: Predict +0.2 (boost the prediction)
+  - For sample 3: Predict -0.2 (reduce the prediction)
+
+After Tree 1 + 0.1 × Tree 2:
+  Predictions: [0.0, 0.82, 0.18]
+  ↓
+  Closer to actual [0.0, 1.0, 0.0]
+
+(Repeat for Tree 3, Tree 4, ...)
+\end{lstlisting}
+}
+
+\vspace{0.2cm}
+\textbf{Key Insight:} Each tree focuses on \textit{correcting} previous mistakes.
+
+\end{frame}
+
+%=============================================================
+% SLIDE 9: GB Hyperparameters
+%=============================================================
+\begin{frame}[fragile]
+\frametitle{Gradient Boosting Hyperparameters Explained}
+
+\textbf{n\_estimators} (number of trees)
+\begin{itemize}
+    \item More trees = more learning iterations
+    \item Trade-off: More complexity, slower training
+    \item Typical range: 50 to 200
+\end{itemize}
+
+\vspace{0.2cm}
+\textbf{learning\_rate} (step size, also called `shrinkage')
+\begin{itemize}
+    \item lr = 0.1: Each tree contributes 10\% to prediction
+    \item lr = 0.05: Each tree contributes 5\% (slower, more stable)
+    \item lr = 0.01: Each tree contributes 1\% (very slow, careful learning)
+    \item Rule of thumb: Lower lr needs more trees
+\end{itemize}
+
+\vspace{0.2cm}
+\textbf{max\_depth} (tree complexity)
+\begin{itemize}
+    \item depth = 3: Shallow trees (avoid overfitting)
+    \item depth = 5: Medium trees (balance)
+    \item depth = 10: Deep trees (high variance, prone to overfitting)
+\end{itemize}
+
+\vspace{0.2cm}
+\textbf{subsample} (data fraction per tree)
+\begin{itemize}
+    \item 0.8 = use 80\% of data for each tree
+    \item Adds randomness, prevents overfitting
+\end{itemize}
+
+\end{frame}
+
+%=============================================================
+% SLIDE 10: GB Training Intuition
+%=============================================================
+\begin{frame}[fragile]
+\frametitle{Gradient Boosting Training Curve Intuition}
+
+\textbf{Learning trajectory on training data:}
+
+\vspace{0.2cm}
+{\small
+\begin{lstlisting}
+Iteration 1: Train on full data
+  Misclassification rate: 25%
+
+Iteration 2: Train on residuals of 25% samples
+  New misclassification: 20%
+
+Iteration 3: Train on residuals of remaining 20%
+  New misclassification: 18%
+
+Iteration 4: Train on residuals of remaining 18%
+  New misclassification: 17%
+
+Iteration 5: Train on residuals of remaining 17%
+  New misclassification: 16.5%
+
+(Diminishing returns as we improve)
+\end{lstlisting}
+}
+
+\vspace{0.2cm}
+\textbf{Pattern:} Learning curve is \textbf{steep at first}, then \textbf{flattens}.
+
+\vspace{0.2cm}
+This is why we typically use 50-100 trees (good balance between improvement and computation).
+
+\end{frame}
+
+%=============================================================
+% SLIDE 11: LightGBM Introduction
+%=============================================================
+\begin{frame}[fragile]
+\frametitle{LightGBM: The Modern Upgrade}
+
+\textbf{Traditional Gradient Boosting (Level-wise):}
+
+All nodes at depth $d$ split before any node at depth $d+1$.
+
+\vspace{0.2cm}
+\begin{center}
+{\tiny
+\begin{verbatim}
+           node
+          /    \
+        node    node      <- depth 1
+       /  \    /   \
+     node node node node   <- depth 2
+     /\   /\   /\   /\
+    l  l l  l l  l l  l    <- depth 3 (ALL split)
+\end{verbatim}
+}
+\end{center}
+
+\vspace{0.2cm}
+\textbf{LightGBM (Leaf-wise):}
+
+Splits only the leaf that reduces loss most (smart focus).
+
+\vspace{0.2cm}
+\begin{center}
+{\tiny
+\begin{verbatim}
+           node
+          /    \
+        node    node
+       /  \      |
+     node node  node   <- splits only where it matters most
+\end{verbatim}
+}
+\end{center}
+
+\vspace{0.2cm}
+\textbf{Result:} Fewer trees needed, \textbf{10-20× faster}, often better accuracy.
+
+\end{frame}
+
+%=============================================================
+% SLIDE 12: LightGBM vs Competitors
+%=============================================================
+\begin{frame}[fragile]
+\frametitle{LightGBM vs Other Boosting Algorithms}
+
+\begin{center}
+{\small
+\begin{tabular}{|l|c|c|c|c|}
+\hline
+\textbf{Algorithm} & \textbf{Growth} & \textbf{Speed} & \textbf{Accuracy} & \textbf{Overfit} \\
+\hline
+GB (sklearn) & Level-wise & Baseline & Good & Low \\
+\hline
+XGBoost & Level-wise & Medium & Very Good & Medium \\
+\hline
+\textbf{LightGBM} & \textbf{Leaf-wise} & \textbf{Very Fast} & \textbf{Excellent} & \textbf{High*} \\
+\hline
+CatBoost & Symmetric & Slow & Excellent & Medium \\
+\hline
+\end{tabular}
+}
+\end{center}
+
+\vspace{0.3cm}
+\textit{* High overfitting risk on small data; requires careful regularization}
+
+\vspace{0.3cm}
+\textbf{For our dataset:} Heart failure data has only 299 samples.
+
+\begin{itemize}
+    \item LightGBM with strong regularization is optimal
+    \item Conservative hyperparameters prevent overfitting
+    \item Benefit: 10× speedup vs sklearn GB
+\end{itemize}
+
+\end{frame}
+
+%=============================================================
+% SLIDE 13: LightGBM Hyperparameters
+%=============================================================
+\begin{frame}[fragile]
+\frametitle{LightGBM Hyperparameters}
+
+\textbf{num\_leaves} (tree complexity limit)
+\begin{itemize}
+    \item 15: Conservative (prevents overfitting)
+    \item 31: Default, balanced
+    \item 100: Aggressive (high variance, risk on small data)
+\end{itemize}
+
+\textbf{learning\_rate}
+\begin{itemize}
+    \item Same interpretation as GB
+    \item Default: 0.1 (standard), 0.05 (slower, stable)
+\end{itemize}
+
+\textbf{min\_data\_in\_leaf}
+\begin{itemize}
+    \item Minimum samples required in each leaf
+    \item Default: 20
+    \item Heart failure data: Use 20-30 as safety valve against overfitting
+\end{itemize}
+
+\textbf{feature\_fraction \& bagging\_fraction}
+\begin{itemize}
+    \item Randomness in features and samples
+    \item Default: 1.0 (use all)
+    \item Recommended: 0.8 (use 80\%)
+\end{itemize}
+
+\textbf{max\_depth}
+\begin{itemize}
+    \item Explicitly limit depth (safety mechanism)
+    \item Useful: max\_depth=7 (overrides num\_leaves if needed)
+\end{itemize}
+
+\end{frame}
+
+%=============================================================
+% SLIDE 14: Leaf-wise Growth Advantage
+%=============================================================
+\begin{frame}[fragile]
+\frametitle{Why Leaf-wise Growth is Smarter}
+
+\textbf{The Smart Decision:}
+
+\vspace{0.2cm}
+{\small
+\begin{lstlisting}
+Training data analysis:
+  Node A: 100 samples with 30% error rate
+  Node B: 80 samples with 5% error rate
+
+Level-wise (traditional):
+  Split both A and B equally
+  → Wastes effort on node B
+
+Leaf-wise (LightGBM):
+  Split A first (30% error is higher!)
+  → Fix the bigger problem first
+  → Then split B (5% error is now bigger)
+
+Result: Finds high-error regions faster
+        with fewer total splits needed
+\end{lstlisting}
+}
+
+\vspace{0.3cm}
+\textbf{The Danger:}
+
+On small data (n=299), leaf-wise can find \textbf{spurious patterns}.
+
+\vspace{0.2cm}
+\begin{alertblock}{Safety Mechanism}
+Use \texttt{min\_data\_in\_leaf=20} as a safety valve to prevent overfitting.
+\end{alertblock}
+
+\end{frame}
+
+%=============================================================
+% SLIDE 15: Optuna Motivation
+%=============================================================
+\begin{frame}[fragile]
+\frametitle{Why Optuna for Hyperparameter Tuning?}
+
+\textbf{Random Search:}
+\begin{itemize}
+    \item Try 50 random combinations
+    \item Expected good params: Maybe 2-3 by luck
+    \item Wasteful
+\end{itemize}
+
+\vspace{0.2cm}
+\textbf{Grid Search:}
+\begin{itemize}
+    \item Try $3 \times 3 \times 3 \times 3 = 81$ combinations
+    \item Computational cost: Massive
+    \item Covers only discrete points
+\end{itemize}
+
+\vspace{0.2cm}
+\textbf{Bayesian Optimization (Optuna):}
+\begin{itemize}
+    \item Try 50 trials, but \textbf{smart}
+    \item Trials 1-10: Explore broadly
+    \item Trials 11-30: Focus on promising regions
+    \item Trials 31-50: Refine around the best
+    \item Expected good params: 10-20
+\end{itemize}
+
+\vspace{0.3cm}
+\begin{center}
+\textbf{Optuna wins:} Best quality with fixed computational budget.
+\end{center}
+
+\end{frame}
+
+%=============================================================
+% SLIDE 16: Optuna Strategy
+%=============================================================
+\begin{frame}[fragile]
+\frametitle{Optuna Strategy for Our Model}
+
+\textbf{The optimization function:}
+
+{\small
+\begin{lstlisting}
+def objective(trial):
+    # Suggest hyperparameters
+    n_est = trial.suggest_int('n_estimators', 50, 150)
+    lr = trial.suggest_float('learning_rate', 0.01, 0.1, log=True)
+    num_leaves = trial.suggest_int('num_leaves', 15, 50)
+    # ... more hyperparameters ...
+
+    # Train and evaluate
+    model = LGBMClassifier(**params)
+    scores = cross_val_score(model, X, y, cv=5,
+                            scoring='roc_auc')
+
+    # Return single metric for optimization
+    return scores.mean()
+
+# Let Optuna run 50 trials
+study.optimize(objective, n_trials=50)
+\end{lstlisting}
+}
+
+\vspace{0.2cm}
+\textbf{Key Decisions in Our Setup:}
+
+\begin{itemize}
+    \item \textbf{log-scale for learning\_rate:} Makes 0.001, 0.01, 0.1, 0.3 equally spaced
+    \item \textbf{ROC-AUC metric:} Handles imbalanced data better
+    \item \textbf{5-fold CV:} Honest, robust performance estimate
+\end{itemize}
+
+\end{frame}
+
+%=============================================================
+% SLIDE 17: Full Pipeline
+%=============================================================
+\begin{frame}[fragile]
+\frametitle{The Complete ML Pipeline}
+
+\vspace{-0.3cm}
+\begin{center}
+{\scriptsize
+\begin{tabular}{c}
+Raw Data (299 samples, 11 features) \\
+$\downarrow$ \\
+Train/Test Split (70/30) + StandardScaler \\
+$\downarrow$ \\
+\end{tabular}
+
+\vspace{0.1cm}
+\begin{tabular}{cc}
+Training Set (210) & $\rightarrow$ & Test Set (89) \\
+(use only for training) & & (final evaluation)
+\end{tabular}
+
+\vspace{0.1cm}
+\begin{tabular}{c}
+Training Set \\
+$\downarrow$ \\
+\begin{tabular}{|c|}
+\hline
+\text{Section 2: Random Forest (baseline)} \\
+\hline
+\text{Section 4: Gradient Boosting} \\
+\hline
+\text{Section 5: LightGBM (simple)} \\
+\hline
+\text{Section 6: Optuna Tuning (50 trials)} \\
+\hline
+\text{Section 6: LightGBM (tuned)} \\
+\hline
+\end{tabular} \\
+$\downarrow$ \\
+All models evaluated on Test Set \\
+$\downarrow$ \\
+Compare 4 metrics: Accuracy, F1, ROC-AUC, MCC
+\end{tabular}
+}
+\end{center}
+
+\end{frame}
+
+%=============================================================
+% SLIDE 18: Expected Results
+%=============================================================
+\begin{frame}[fragile]
+\frametitle{Expected Results on Heart Failure Data}
+
+\textbf{Typical Performance:}
+
+\begin{center}
+{\small
+\begin{tabular}{|l|c|c|c|c|}
+\hline
+\textbf{Model} & \textbf{Accuracy} & \textbf{F1} & \textbf{ROC-AUC} & \textbf{MCC} \\
+\hline
+Random Forest & 0.78 & 0.72 & 0.81 & 0.58 \\
+\hline
+Gradient Boosting & 0.80 & 0.74 & 0.83 & 0.61 \\
+\hline
+LightGBM (Simple) & 0.80 & 0.73 & 0.84 & 0.62 \\
+\hline
+\textbf{LightGBM (Tuned)} & \textbf{0.82} & \textbf{0.76} & \textbf{0.86} & \textbf{0.65} \\
+\hline
+\end{tabular}
+}
+\end{center}
+
+\vspace{0.3cm}
+\textbf{Key Observations:}
+
+\begin{itemize}
+    \item Tuning improves \textbf{all 4 metrics}
+    \item GB $>$ RF consistently (sequential $>$ parallel)
+    \item LightGBM competitive or better than GB
+    \item No single model dominates all metrics
+    \item Gap between best and worst: $\sim$4-5\% ROC-AUC (clinically significant!)
+\end{itemize}
+
+\end{frame}
+
+%=============================================================
+% SLIDE 19: Common Mistakes
+%=============================================================
+\begin{frame}[fragile]
+\frametitle{Hyperparameter Tuning: Mistakes to Avoid}
+
+\textbf{Mistake 1: Tuning on test set}
+\begin{itemize}
+    \item \textcolor{red}{\ding{56}} Leads to overfitting to test data
+    \item \textcolor{green}{\checkmark} Use cross-validation on training set
+\end{itemize}
+
+\textbf{Mistake 2: Too few trials}
+\begin{itemize}
+    \item \textcolor{red}{\ding{56}} 5-10 trials is random luck
+    \item \textcolor{green}{\checkmark} Use 50+ trials
+\end{itemize}
+
+\textbf{Mistake 3: Ignoring min\_data\_in\_leaf}
+\begin{itemize}
+    \item \textcolor{red}{\ding{56}} LightGBM overfits on small data (n=299)
+    \item \textcolor{green}{\checkmark} Set min\_data\_in\_leaf $\geq$ 20
+\end{itemize}
+
+\textbf{Mistake 4: Optimizing accuracy only}
+\begin{itemize}
+    \item \textcolor{red}{\ding{56}} Ignores class imbalance (10\% positive)
+    \item \textcolor{green}{\checkmark} Optimize ROC-AUC, report all 4 metrics
+\end{itemize}
+
+\textbf{Mistake 5: Different metrics for train/test}
+\begin{itemize}
+    \item \textcolor{red}{\ding{56}} Confuses signal from noise
+    \item \textcolor{green}{\checkmark} Use same metric everywhere
+\end{itemize}
+
+\end{frame}
+
+%=============================================================
+% SLIDE 20: Exercise 1
+%=============================================================
+\begin{frame}[fragile]
+\frametitle{Exercise 1: Learning Rate Impact}
+
+\textbf{Task:} Compare two learning rates
+
+\begin{itemize}
+    \item \textbf{Model A:} learning\_rate=0.1 (current)
+    \item \textbf{Model B:} learning\_rate=0.05 (slower)
+    \item Keep: n\_estimators=100, max\_depth=3
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{What to Compare:}
+
+\begin{itemize}
+    \item Which model is more accurate?
+    \item Which has better F1-score?
+    \item Which has higher ROC-AUC?
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Expected Insight:}
+
+\begin{itemize}
+    \item lr=0.1: Faster convergence, might overshoot optimum
+    \item lr=0.05: Slower, more stable, often better on test set
+    \item Small data (n=299) usually favors slower learning
+\end{itemize}
+
+\vspace{0.2cm}
+\textbf{Your Task:} Run both models and report all 4 metrics for each.
+
+\end{frame}
+
+%=============================================================
+% SLIDE 21: Exercise 2
+%=============================================================
+\begin{frame}[fragile]
+\frametitle{Exercise 2: Tuning Speed vs Quality}
+
+\textbf{Task:} Compare tuning budget impact
+
+\begin{itemize}
+    \item \textbf{Version 1:} n\_trials=20
+    \begin{itemize}
+        \item Time: $\sim$2 minutes
+        \item Expected ROC-AUC: 0.83
+    \end{itemize}
+
+    \vspace{0.2cm}
+    \item \textbf{Version 2:} n\_trials=50 (current)
+    \begin{itemize}
+        \item Time: $\sim$5 minutes
+        \item Expected ROC-AUC: 0.86
+    \end{itemize}
+
+    \vspace{0.2cm}
+    \item \textbf{Version 3:} n\_trials=100 (if brave)
+    \begin{itemize}
+        \item Time: $\sim$10 minutes
+        \item Expected ROC-AUC: 0.865
+    \end{itemize}
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Your Task:}
+
+\begin{enumerate}
+    \item Run Optuna with n\_trials=20
+    \item Compare best hyperparameters vs n\_trials=50
+    \item Assess: Is the extra 3 minutes worth 0.03 ROC-AUC gain?
+\end{enumerate}
+
+\vspace{0.2cm}
+\textbf{Expected Learning:} Diminishing returns in optimization
+
+\end{frame}
+
+%=============================================================
+% SLIDE 22: Exercise 3
+%=============================================================
+\begin{frame}[fragile]
+\frametitle{Exercise 3: Choose Your Own Adventure}
+
+\textbf{Select ONE path:}
+
+\vspace{0.2cm}
+\textbf{Option A: Aggressive Tuning (Wider Search)}
+\begin{itemize}
+    \item Expand ranges: learning\_rate 0.001-0.3, num\_leaves 31-100
+    \item Explore extreme values
+    \item Best if: You have computational time and like exploration
+\end{itemize}
+
+\vspace{0.2cm}
+\textbf{Option B: Manual Theory-Based Tuning}
+\begin{itemize}
+    \item Set hyperparameters from learned principles
+    \item learning\_rate=0.05, num\_leaves=15 (conservative)
+    \item Best if: You want to apply lessons learned
+\end{itemize}
+
+\vspace{0.2cm}
+\textbf{Option C: Ultra-Conservative Model}
+\begin{itemize}
+    \item Optimize for stability over accuracy
+    \item Very strict regularization (min\_data\_in\_leaf=30)
+    \item Best if: You're concerned about overfitting
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Your Task:}
+
+\begin{enumerate}
+    \item Choose A, B, or C
+    \item Run the code
+    \item Write one paragraph observation comparing to LightGBM Tuned
+\end{enumerate}
+
+\end{frame}
+
+%=============================================================
+% SLIDE 23: Bias-Variance Tradeoff
+%=============================================================
+\begin{frame}[fragile]
+\frametitle{Building Intuition: Bias-Variance Tradeoff}
+
+\vspace{-0.3cm}
+\begin{center}
+Model Complexity $\rightarrow$
+\end{center}
+
+\textbf{High Variance (Overfitting)} \hfill \textbf{Low Variance (Underfitting)}
+
+\vspace{0.1cm}
+\begin{itemize}
+    \item Shallow trees \hfill Deep trees
+    \item Slow learning rate \hfill Fast learning rate
+    \item Small n\_estimators \hfill Large n\_estimators
+    \item High regularization \hfill No regularization
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Where models fall on this spectrum:}
+
+\begin{itemize}
+    \item \textbf{Random Forest:} Deep trees, many parallel \\
+    $\rightarrow$ Low bias, \textcolor{red}{high variance}
+
+    \item \textbf{Gradient Boosting:} Shallow trees, sequential \\
+    $\rightarrow$ Medium bias, medium variance
+
+    \item \textbf{LightGBM Tuned:} Leaf-wise optimization \\
+    $\rightarrow$ \textcolor{green}{Low bias, low variance} \checkmark
+
+    \item \textbf{LightGBM Conservative:} Strict rules \\
+    $\rightarrow$ \textcolor{red}{High bias}, very low variance
+\end{itemize}
+
+\end{frame}
+
+%=============================================================
+% SLIDE 24: LightGBM Decision Making
+%=============================================================
+\begin{frame}[fragile]
+\frametitle{How LightGBM Actually Makes Decisions}
+
+\textbf{Decision at each expansion step:}
+
+{\small
+\begin{lstlisting}
+When expanding a tree:
+
+1. Current state: 10 leaves (potential splits)
+
+2. Find the leaf with highest loss reduction:
+   - Leaf A: Splitting reduces loss by 0.05
+   - Leaf B: Splitting reduces loss by 0.12  ← Choose this
+   - Leaf C: Splitting reduces loss by 0.03
+
+3. Smart focus on high-error regions:
+   - LightGBM: Splits Leaf B first (0.12 > others)
+   - Traditional GB: Splits ALL leaves at depth d
+                     equally (wastes effort)
+
+4. Result:
+   - LightGBM: Fewer leaves, faster training
+   - Traditional: More leaves, slower, same/worse accuracy
+\end{lstlisting}
+}
+
+\vspace{0.2cm}
+\textbf{Smaller trees $\rightarrow$ Faster training + Better generalization}
+
+\end{frame}
+
+%=============================================================
+% SLIDE 25: Real-World Context
+%=============================================================
+\begin{frame}[fragile]
+\frametitle{Real-World Application: Building a Survival Predictor}
+
+\textbf{Our Dataset:}
+
+\begin{itemize}
+    \item \textbf{299 heart failure patients}
+    \item \textbf{11 clinical measurements} (age, ejection fraction, etc.)
+    \item \textbf{Target:} Mortality (10\% death rate)
+    \item \textbf{Imbalance:} Heavy class imbalance
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Algorithm Choice Rationale:}
+
+\begin{center}
+{\small
+\begin{tabular}{|l|c|l|}
+\hline
+\textbf{When} & \textbf{Algorithm} & \textbf{Why} \\
+\hline
+Baseline & Random Forest & Easy to understand, fast, good benchmark \\
+\hline
+Better accuracy & Gradient Boosting & Sequential learning corrects RF errors \\
+\hline
+Production & LightGBM & Fast, tunable, handles constraints \\
+\hline
+\end{tabular}
+}
+\end{center}
+
+\vspace{0.3cm}
+\textbf{Real Constraints:}
+
+\begin{itemize}
+    \item \textbf{Small dataset} (n=299) $\rightarrow$ need strong regularization
+    \item \textbf{Imbalanced classes} (10\% positive) $\rightarrow$ need multiple metrics
+    \item \textbf{Medical domain} $\rightarrow$ need interpretable results
+\end{itemize}
+
+\end{frame}
+
+%=============================================================
+% SLIDE 26: Chicco & Jurman Connection
+%=============================================================
+\begin{frame}[fragile]
+\frametitle{Connecting to Chicco \& Jurman (2020)}
+
+\textbf{The Paper's Main Finding:}
+
+\begin{quote}
+For imbalanced binary classification, \textbf{MCC} is the most robust metric \\
+that provides a single quality measure valid for both classes.
+\end{quote}
+
+\vspace{0.3cm}
+\textbf{How Week 6 Applies This:}
+
+\begin{itemize}
+    \item[\checkmark] Use heart failure data (imbalanced: 10\% positive)
+
+    \item[\checkmark] Report all 4 metrics (not accuracy alone)
+
+    \item[\checkmark] Compare multiple models (RF, GB, LightGBM)
+
+    \item[\checkmark] Use cross-validation (honest, unbiased estimates)
+
+    \item[\checkmark] Follow ensemble best practices
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{The Key Insight:}
+
+\begin{itemize}
+    \item Accuracy alone misleads on imbalanced data
+    \item MCC catches weak models that accuracy misses
+    \item Ensemble methods beat single models consistently
+    \item Proper tuning gains: +0.04-0.05 ROC-AUC is clinically meaningful
+\end{itemize}
+
+\end{frame}
+
+%=============================================================
+% SLIDE 27: Key Takeaways
+%=============================================================
+\begin{frame}[fragile]
+\frametitle{Key Takeaways}
+
+\textbf{1. Algorithm Progression}
+\begin{itemize}
+    \item Random Forest: Parallel, simple, good baseline
+    \item Gradient Boosting: Sequential, better, more complex
+    \item LightGBM: Optimized, practical, fastest
+\end{itemize}
+
+\textbf{2. Why Sequential $>$ Parallel}
+\begin{itemize}
+    \item GB learns from residuals $\rightarrow$ reduces bias + variance
+    \item RF only reduces variance via averaging
+\end{itemize}
+
+\textbf{3. Metrics Matter}
+\begin{itemize}
+    \item Accuracy alone is misleading
+    \item MCC and ROC-AUC catch hidden problems
+    \item Report all four, compare all
+\end{itemize}
+
+\textbf{4. Hyperparameter Tuning}
+\begin{itemize}
+    \item Optuna: Smart search saves time
+    \item Cross-validation: Essential for honest estimates
+    \item Regularization: Prevent overfitting on small data
+\end{itemize}
+
+\textbf{5. Production Readiness}
+\begin{itemize}
+    \item LightGBM is 10-20× faster
+    \item Tuning gives consistent +0.03-0.05 gains
+    \item Small data needs conservative settings
+\end{itemize}
+
+\end{frame}
+
+%=============================================================
+% SLIDE 28: What's Next
+%=============================================================
+\begin{frame}[fragile]
+\frametitle{What's Next (Weeks 7+)}
+
+\textbf{You now know:}
+
+\begin{itemize}
+    \item[\checkmark] Compare different algorithms systematically
+    \item[\checkmark] Evaluate with multiple metrics
+    \item[\checkmark] Tune hyperparameters automatically
+    \item[\checkmark] Build ensemble models
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Coming next:}
+
+\begin{itemize}
+    \item Advanced feature engineering
+    \item Handling class imbalance (SMOTE, class\_weight)
+    \item Model interpretation (SHAP values, feature importance)
+    \item Production deployment (model saving, serving)
+    \item Cross-validation strategies for small data
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{The big picture:}
+
+Systematic, data-driven approach beats guessing every time.
+
+\end{frame}
+
+%=============================================================
+% SLIDE 29: Resources
+%=============================================================
+\begin{frame}[fragile]
+\frametitle{Resources for Deeper Learning}
+
+\textbf{Gradient Boosting Intuition}
+\begin{itemize}
+    \item StatQuest: Gradient Boost (YouTube)
+    \item StatQuest: XGBoost (YouTube playlist)
+\end{itemize}
+
+\textbf{LightGBM Mastery}
+\begin{itemize}
+    \item LightGBM Official Documentation
+    \item Parameter Tuning Guide
+\end{itemize}
+
+\textbf{Hyperparameter Optimization}
+\begin{itemize}
+    \item Optuna Official Documentation
+    \item Hyperparameter Optimization Strategies Tutorial
+\end{itemize}
+
+\textbf{Evaluation Best Practices}
+\begin{itemize}
+    \item Chicco \& Jurman (2020): MCC Advantages
+    \item Imbalanced-Learn Library
+\end{itemize}
+
+\textbf{Live Examples}
+\begin{itemize}
+    \item Kaggle competitions using LightGBM
+    \item GitHub: LightGBM competition winners
+\end{itemize}
+
+\end{frame}
+
+%=============================================================
+% SLIDE 30: Q&A
+%=============================================================
+\begin{frame}[fragile]
+\frametitle{Q\&A / Open Discussion}
+
+\textbf{Q: Why not just use the simplest model?}
+\begin{itemize}
+    \item A: Tuning gives +0.03-0.05 ROC-AUC on this dataset. In medical contexts, this can save lives.
+\end{itemize}
+
+\textbf{Q: Is LightGBM always better?}
+\begin{itemize}
+    \item A: Not always. On very small data (<100 samples) or with outliers, simpler models work better.
+\end{itemize}
+
+\textbf{Q: How many trials do I need?}
+\begin{itemize}
+    \item A: 50 is good for this problem. More trials rarely help beyond n=100 (diminishing returns).
+\end{itemize}
+
+\textbf{Q: What if my tuned model is worse on test data?}
+\begin{itemize}
+    \item A: Use CV-based tuning on training set. Report test-set results separately.
+\end{itemize}
+
+\textbf{Q: Should I report accuracy or ROC-AUC?}
+\begin{itemize}
+    \item A: Both. Report all four metrics. ROC-AUC more reliable for imbalanced data.
+\end{itemize}
+
+\end{frame}
+
+%=============================================================
+% SLIDE 31: The Big Picture
+%=============================================================
+\begin{frame}[fragile]
+\frametitle{The Big Picture: From Week 1 to Week 6}
+
+\vspace{-0.2cm}
+\textbf{Progression:}
+
+\begin{center}
+{\small
+\begin{tabular}{|l|l|}
+\hline
+Week 1-2 & Data loading + cleaning \\
+\hline
+Week 3-4 & Exploratory analysis + feature engineering \\
+\hline
+Week 5 & Baseline modeling (Random Forest) \\
+\hline
+\textbf{Week 6} & \textbf{\textcolor{red}{Systematic improvement (GB + LightGBM)}} \\
+\hline
+Week 7+ & Advanced techniques + production \\
+\hline
+\end{tabular}
+}
+\end{center}
+
+\vspace{0.3cm}
+\textbf{What this progression teaches:}
+
+\begin{enumerate}
+    \item \textbf{Start simple} (RF: 5 hyperparameters)
+    \item \textbf{Improve systematically} (GB: understand residuals)
+    \item \textbf{Optimize carefully} (LightGBM: 7 hyperparameters + Optuna)
+    \item \textbf{Evaluate honestly} (4 metrics + cross-validation)
+    \item \textbf{Scale confidently} (ready for production)
+\end{enumerate}
+
+\vspace{0.3cm}
+\begin{center}
+\large
+\textit{Good machine learning is iterative, not magical.}
+
+\vspace{0.2cm}
+Simple baselines $\rightarrow$ Systematic improvements $\rightarrow$ Production systems
+\end{center}
+
+\end{frame}
+
+%=============================================================
+% FINAL SLIDE
+%=============================================================
+\begin{frame}[fragile]
+\frametitle{Thank You}
+
+\begin{center}
+\Large
+\textbf{Week 6: From Random Forest to LightGBM}
+
+\vspace{0.5cm}
+\normalsize
+Questions? Comments? Observations?
+
+\vspace{0.7cm}
+\textit{Remember: The best model is the one you understand \\ and can explain to others.}
+
+\end{center}
+
+\end{frame}
+
+\end{document}

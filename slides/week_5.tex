@@ -1,0 +1,547 @@
+\documentclass[aspectratio=169]{beamer}
+\usetheme{Madrid}
+\usecolortheme{default}
+
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{hyperref}
+
+\title{Week 5: Hyperparameter Optimization \& Advanced Search Strategies}
+\subtitle{Heart Failure Survival Analysis}
+\author{MDST Project}
+\date{Winter 2026}
+
+\begin{document}
+
+\begin{frame}
+\titlepage
+\end{frame}
+
+\begin{frame}{Outline}
+\tableofcontents
+\end{frame}
+
+%=============================================================================
+\section{Week 4 Recap}
+%=============================================================================
+
+\begin{frame}{Quick Recap: Week 4 - Classification Models}
+\begin{columns}
+\column{0.5\textwidth}
+\textbf{Algorithms Trained:}
+\begin{enumerate}
+    \item Logistic Regression
+    \item Random Forest
+    \item Support Vector Machines
+    \item K-Nearest Neighbors
+\end{enumerate}
+
+\column{0.5\textwidth}
+\textbf{Key Concepts:}
+\begin{itemize}
+    \item Train/Test split with stratification
+    \item Feature normalization
+    \item Evaluation metrics (accuracy, precision, recall, F1, ROC-AUC)
+\end{itemize}
+\end{columns}
+
+\vspace{0.3cm}
+\textbf{This Week:} Make these models even better by optimizing their hyperparameters!
+\end{frame}
+
+\begin{frame}{From Basic Models to Optimized Models}
+\textbf{Last Week:} We trained models with default hyperparameters
+
+\vspace{0.3cm}
+\begin{columns}
+\column{0.5\textwidth}
+\textbf{Example - Random Forest:}
+\begin{itemize}
+    \item n\_estimators = 100 (default)
+    \item max\_depth = None (default)
+    \item Test accuracy = 73\%
+\end{itemize}
+
+\column{0.5\textwidth}
+\textbf{This Week:} Find better settings!
+\begin{itemize}
+    \item n\_estimators = 50 (tuned)
+    \item max\_depth = 10 (tuned)
+    \item Test accuracy = ??? (could be better!)
+\end{itemize}
+\end{columns}
+
+\vspace{0.3cm}
+\textbf{Question:} How do we find these optimal values systematically?
+\end{frame}
+
+%=============================================================================
+\section{Hyperparameter Optimization Overview}
+%=============================================================================
+
+\begin{frame}{What Are Hyperparameters?}
+\textbf{Two Types of Parameters:}
+
+\vspace{0.2cm}
+\begin{table}
+\centering
+\begin{tabular}{p{4.5cm}p{4.5cm}}
+\toprule
+\textbf{Model Parameters} & \textbf{Hyperparameters} \\
+\midrule
+Learned from data during training & Set before training \\
+\midrule
+Weights in neural networks & Learning rate, batch size \\
+Coefficients in logistic regression & Number of iterations \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\vspace{0.3cm}
+\textbf{Random Forest Hyperparameters:}
+\begin{itemize}
+    \item \textbf{n\_estimators:} Number of trees (more $\rightarrow$ better but slower)
+    \item \textbf{max\_depth:} Maximum tree depth (deeper $\rightarrow$ more complex)
+    \item \textbf{min\_samples\_split:} Minimum samples to split a node
+    \item \textbf{max\_features:} Number of features to consider per split
+\end{itemize}
+\end{frame}
+
+\begin{frame}{The Problem: Too Many Combinations!}
+\textbf{Scenario:} Fine-tune Random Forest
+
+\vspace{0.2cm}
+\begin{columns}
+\column{0.5\textwidth}
+\textbf{Parameter Ranges:}
+\begin{itemize}
+    \item n\_estimators: [20, 50, 100, 150, 200] (5 values)
+    \item max\_depth: [5, 10, 15, 20] (4 values)
+    \item min\_samples\_split: [2, 5, 10] (3 values)
+    \item max\_features: ['sqrt', 'log2'] (2 values)
+\end{itemize}
+
+\column{0.5\textwidth}
+\textbf{Total Combinations:}
+$$5 \times 4 \times 3 \times 2 = 120 \text{ models}$$
+
+If each model takes 1 second to train:
+$$120 \text{ seconds} = 2 \text{ minutes}$$
+
+\vspace{0.3cm}
+\textbf{With more parameters?}
+$$10 \times 10 \times 10 \times 10 = 10,000 \text{ models!}$$
+\end{columns}
+
+\vspace{0.3cm}
+\textbf{Solution:} Use smart search strategies instead of trying everything!
+\end{frame}
+
+%=============================================================================
+\section{Approach 1: GridSearchCV}
+%=============================================================================
+
+\begin{frame}{GridSearchCV: Exhaustive Search}
+\textbf{Strategy:} Test all combinations in the parameter grid
+
+\vspace{0.3cm}
+\textbf{Process:}
+\begin{enumerate}
+    \item Define parameter grid (all combinations)
+    \item For each combination:
+    \begin{itemize}
+        \item Train model on training data
+        \item Evaluate with k-fold cross-validation
+        \item Record performance
+    \end{itemize}
+    \item Return best parameters
+\end{enumerate}
+
+\vspace{0.3cm}
+\textbf{Code Pattern:}
+{\small \texttt{grid = GridSearchCV(model, param\_grid, cv=5)} \\
+\texttt{grid.fit(X\_train, y\_train)} \\
+\texttt{best\_params = grid.best\_params\_}}
+
+\vspace{0.3cm}
+\textbf{Pros:} Exhaustive, guaranteed best in grid
+
+\textbf{Cons:} Slow, exponential growth with parameters
+\end{frame}
+
+\begin{frame}{Results from GridSearchCV}
+\textbf{Parameter Grid:}
+\begin{itemize}
+    \item n\_estimators: [20, 50, 100, 150, 200]
+    \item max\_depth: [None, 10, 20]
+    \item min\_samples\_split: [2, 5, 7, 10, 13]
+    \item max\_features: ['sqrt', 'log2']
+\end{itemize}
+
+\textbf{Total Models Evaluated:} 150
+
+\vspace{0.3cm}
+\textbf{Results:}
+\begin{itemize}
+    \item Best Validation Accuracy: \textbf{76.53\%}
+    \item Best Parameters: n\_estimators=50, max\_depth=10, min\_samples\_split=5, max\_features='sqrt'
+    \item Test Accuracy: \textbf{73.33\%}
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Observation:} Works well, but 150 evaluations is expensive with larger models!
+\end{frame}
+
+%=============================================================================
+\section{Approach 2: Random Search with Optuna}
+%=============================================================================
+
+\begin{frame}{Random Search: Smarter Sampling}
+\textbf{Strategy:} Randomly sample from parameter space (not all combinations)
+
+\vspace{0.3cm}
+\textbf{Key Idea:}
+\begin{itemize}
+    \item Instead of grid: define ranges (continuous or discrete)
+    \item Sample randomly from these ranges
+    \item With enough trials, likely to find good parameters
+    \item Much faster than GridSearch
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Why It Works:}
+\begin{itemize}
+    \item You don't need to evaluate every grid point
+    \item Randomness helps explore the space
+    \item Embarrassingly parallel (can run trials in parallel)
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Optuna Advantage:} Better API than GridSearch, cleaner code
+\end{frame}
+
+\begin{frame}{Optuna: Modern Framework}
+\textbf{What is Optuna?}
+\begin{itemize}
+    \item Lightweight hyperparameter optimization framework
+    \item Supports multiple search strategies
+    \item Easy to use, flexible parameter types
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Basic Workflow:}
+
+1. Define objective function (returns metric to maximize)
+2. Define parameter ranges within objective function
+3. Create study with desired sampler
+4. Optimize by running trials
+
+\vspace{0.3cm}
+\textbf{Code:}
+{\small \texttt{study = optuna.create\_study(sampler=RandomSampler())} \\
+\texttt{study.optimize(objective\_fn, n\_trials=50)} \\
+\texttt{best\_params = study.best\_params}}
+\end{frame}
+
+\begin{frame}{Random Search Results (50 trials)}
+\textbf{Setup:}
+\begin{itemize}
+    \item Sampler: RandomSampler (random exploration)
+    \item Number of trials: 50 (4x less than GridSearch!)
+    \item Same parameter ranges as GridSearch
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Results:}
+\begin{itemize}
+    \item Best Validation Accuracy: \textbf{?}
+    \item Best Parameters: \textbf{varies each run}
+    \item Test Accuracy: \textbf{?}
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Advantages:}
+\begin{itemize}
+    \item 3x faster than GridSearch (50 vs 150 models)
+    \item Can handle continuous parameter ranges
+    \item Good for exploratory tuning
+\end{itemize}
+
+\textbf{Disadvantages:}
+\begin{itemize}
+    \item No learning from previous trials
+    \item Might miss good regions of parameter space
+\end{itemize}
+\end{frame}
+
+%=============================================================================
+\section{Approach 3: Bayesian Optimization}
+%=============================================================================
+
+\begin{frame}{Bayesian Optimization: Intelligent Search}
+\textbf{Key Idea:} Learn from previous trials to propose better parameters
+
+\vspace{0.3cm}
+\textbf{How It Works:}
+\begin{enumerate}
+    \item Start with random trials to explore
+    \item Build probability model of objective function
+    \item Use model to propose promising parameters
+    \item Evaluate new parameters
+    \item Update model with new observation
+    \item Repeat steps 3-5
+\end{enumerate}
+
+\vspace{0.3cm}
+\textbf{Advantage Over Random Search:}
+\begin{itemize}
+    \item \textbf{Exploitation:} Try parameters near previous good results
+    \item \textbf{Exploration:} Still explore uncertain regions
+    \item Uses all past information, not just random samples
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Result:} Better performance with fewer trials!
+\end{frame}
+
+\begin{frame}{Tree-structured Parzen Estimator (TPE)}
+\textbf{What is TPE?}
+\begin{itemize}
+    \item State-of-the-art Bayesian optimization algorithm
+    \item Used by Optuna by default
+    \item Very effective and fast
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Key Property:} ``Exploitation vs Exploration''
+
+\begin{columns}
+\column{0.5\textwidth}
+\textbf{Early Trials:}
+\begin{itemize}
+    \item Mostly explore randomly
+    \item Build initial understanding
+\end{itemize}
+
+\column{0.5\textwidth}
+\textbf{Later Trials:}
+\begin{itemize}
+    \item Focus on promising regions
+    \item Still explore uncertain areas
+\end{itemize}
+\end{columns}
+
+\vspace{0.3cm}
+\textbf{Code:}
+{\small \texttt{study = optuna.create\_study(sampler=TPESampler())} \\
+\texttt{study.optimize(objective\_fn, n\_trials=50)}}
+\end{frame}
+
+\begin{frame}{Bayesian Optimization Results (50 trials)}
+\textbf{Setup:}
+\begin{itemize}
+    \item Sampler: TPESampler (Bayesian + intelligent search)
+    \item Number of trials: 50
+    \item Same parameter ranges and objective function
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Results:}
+\begin{itemize}
+    \item Best Validation Accuracy: \textbf{?}
+    \item Best Parameters: \textbf{likely better than random}
+    \item Test Accuracy: \textbf{?}
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Key Observation:}
+\begin{itemize}
+    \item Same number of trials as Random Search (50)
+    \item But Bayesian typically finds better parameters
+    \item Because it learns from previous trials
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Practical Impact:} Get GridSearch quality in 1/3 the time!
+\end{frame}
+
+%=============================================================================
+\section{Comparison \& Strategy}
+%=============================================================================
+
+\begin{frame}{Comparing All Three Approaches}
+\textbf{Quick Comparison Table:}
+
+\begin{table}
+\centering
+\begin{tabular}{p{2.5cm}|p{2.5cm}|p{2.5cm}|p{2.5cm}}
+\toprule
+& \textbf{GridSearch} & \textbf{Random} & \textbf{Bayesian} \\
+\midrule
+Trials & 150 & 50 & 50 \\
+\midrule
+Speed & Slow & Medium & Fast \\
+\midrule
+Learning & None & None & YES \\
+\midrule
+Best For & Small grids & Exploration & \textbf{Most cases} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\vspace{0.3cm}
+\textbf{Efficiency:} Bayesian $>$ Random $>$ GridSearch
+
+\vspace{0.3cm}
+\textbf{Quality:} Bayesian $\geq$ GridSearch $>$ Random
+\end{frame}
+
+\begin{frame}{When to Use Each Approach}
+\textbf{Use GridSearchCV When:}
+\begin{itemize}
+    \item Parameter space is small and discrete
+    \item You have plenty of compute resources
+    \item Parameters are well-understood
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Use Random Search When:}
+\begin{itemize}
+    \item Quick exploration needed
+    \item Easily parallelizable
+    \item Simple implementation preferred
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Use Bayesian Optimization (Optuna) When:}
+\begin{itemize}
+    \item \textbf{[RECOMMENDED FOR MOST PROJECTS]}
+    \item Training models is expensive/slow
+    \item Mix of continuous and discrete parameters
+    \item Want best results with reasonable compute
+    \item Working on real problems (not toy examples)
+\end{itemize}
+\end{frame}
+
+%=============================================================================
+\section{Advanced: Pruning}
+%=============================================================================
+
+\begin{frame}{Pruning: Early Stopping}
+\textbf{Idea:} If a model looks bad halfway through, stop training it!
+
+\vspace{0.3cm}
+\textbf{Example Scenario:}
+\begin{itemize}
+    \item Trial 1 (bad hyperparams): epoch 1 acc=45\%, epoch 10 acc=46\%
+    \item \textbf{Prune this trial} instead of training all 100 epochs
+    \item Save computation time!
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Useful For:}
+\begin{itemize}
+    \item Neural networks (many epochs)
+    \item Expensive models
+    \item When training takes hours/days
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Code Pattern:}
+{\small
+\texttt{for epoch in range(100):} \\
+\quad \texttt{acc = train\_epoch()} \\
+\quad \texttt{trial.report(acc, epoch)} \\
+\quad \texttt{if trial.should\_prune():} \\
+\quad \quad \texttt{raise optuna.TrialPruned()}
+}
+
+\textbf{Not needed for Week 5}, but good to know!
+\end{frame}
+
+%=============================================================================
+\section{Kaggle Competition}
+%=============================================================================
+
+\begin{frame}{Kaggle-Style Challenge}
+\textbf{Your Task:}
+\begin{enumerate}
+    \item Use GridSearch with different ML classifiers
+    \item Find best hyperparameters for each
+    \item Compare test accuracy across models
+    \item Goal: Highest test accuracy wins!
+\end{enumerate}
+
+\vspace{0.3cm}
+\textbf{Fixed Parameters:}
+\begin{itemize}
+    \item Train/Test split: 70/30, stratified, random\_state=21
+    \item Cross-validation: 5-fold
+    \item Metric: accuracy
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Models to Try:}
+\begin{itemize}
+    \item Logistic Regression
+    \item Random Forest
+    \item Support Vector Machines
+    \item Gradient Boosting (new!)
+    \item Others (XGBoost, LightGBM if you're ambitious)
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Ranking:} Top 3 with highest test accuracy win!
+\end{frame}
+
+%=============================================================================
+\section{Summary}
+%=============================================================================
+
+\begin{frame}{Key Takeaways}
+\textbf{Hyperparameters matter!} Default parameters are rarely optimal.
+
+\vspace{0.3cm}
+\textbf{Three Search Strategies:}
+\begin{enumerate}
+    \item \textbf{GridSearchCV:} Exhaustive but slow
+    \item \textbf{Random Search:} Faster, less learning
+    \item \textbf{Bayesian (Optuna):} Smart and efficient [RECOMMENDED]
+\end{enumerate}
+
+\vspace{0.3cm}
+\textbf{Practical Recommendations:}
+\begin{itemize}
+    \item Start with GridSearch for small spaces
+    \item Use Optuna for anything larger/expensive
+    \item Always validate on test set, never train set!
+    \item Compare multiple models, not just one
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Next Steps:}
+\begin{itemize}
+    \item Implement hyperparameter tuning
+    \item Compare models in the competition
+    \item Explore advanced techniques (ensembles, stacking)
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Questions?}
+\begin{center}
+\Large
+\textbf{Week 5: Hyperparameter Optimization}
+
+\vspace{1cm}
+\normalsize
+Key Resources:
+\begin{itemize}
+    \item GridSearchCV docs: scikit-learn
+    \item Optuna: \texttt{https://optuna.org}
+    \item Week 5 notebook has working examples
+\end{itemize}
+\end{center}
+\end{frame}
+
+\end{document}

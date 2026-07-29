@@ -1,0 +1,475 @@
+\documentclass[aspectratio=169]{beamer}
+\usetheme{Madrid}
+\usecolortheme{default}
+
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{hyperref}
+
+\title{Week 4: Supervised Learning \& Classification Algorithms}
+\subtitle{Heart Failure Survival Analysis}
+\author{MDST Project}
+\date{Winter 2026}
+
+\begin{document}
+
+\begin{frame}
+\titlepage
+\end{frame}
+
+\begin{frame}{Outline}
+\tableofcontents
+\end{frame}
+
+%=============================================================================
+\section{Week 3 Recap}
+%=============================================================================
+
+\begin{frame}{Quick Recap: Week 3 - Unsupervised Learning}
+\begin{columns}
+\column{0.5\textwidth}
+\textbf{What We Did:}
+\begin{enumerate}
+    \item Normalized data using Z-score
+    \item Applied PCA for dimensionality reduction
+    \item Performed K-Means clustering
+    \item Performed Hierarchical clustering
+\end{enumerate}
+
+\column{0.5\textwidth}
+\textbf{Key Insights:}
+\begin{itemize}
+    \item Clusters didn't perfectly separate death events
+    \item Some natural groupings emerged
+    \item PCA showed most variance in 2-3 components
+\end{itemize}
+\end{columns}
+
+\vspace{0.3cm}
+\textbf{This Week:} Use target labels to train predictive models!
+\end{frame}
+
+%=============================================================================
+\section{Supervised Learning Overview}
+%=============================================================================
+
+\begin{frame}{Supervised vs. Unsupervised}
+\begin{table}
+\centering
+\begin{tabular}{p{4.5cm}p{4.5cm}}
+\toprule
+\textbf{Unsupervised (Week 3)} & \textbf{Supervised (Week 4)} \\
+\midrule
+No target variable & Target variable (DEATH\_EVENT) \\
+\midrule
+Find patterns/groupings & Predict outcomes \\
+\midrule
+PCA, Clustering & Classification, Regression \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\vspace{0.3cm}
+\textbf{Classification:} Predict categories (0 or 1: survived or died)
+
+\vspace{0.2cm}
+\textbf{Regression:} Predict continuous values (not used here)
+\end{frame}
+
+\begin{frame}{The Machine Learning Workflow}
+\begin{enumerate}
+    \item \textbf{Load \& Explore Data:} Understand features and target
+    \item \textbf{Train/Test Split:} Avoid data leakage!
+    \item \textbf{Normalize:} Put features on same scale
+    \item \textbf{Train Model:} Fit algorithm to training data
+    \item \textbf{Evaluate:} Test on unseen data
+    \item \textbf{Compare:} Which model is best?
+\end{enumerate}
+
+\vspace{0.3cm}
+\textbf{Critical Principle:} Train on training set, evaluate on test set. Never train on test data!
+\end{frame}
+
+%=============================================================================
+\section{Train/Test Split}
+%=============================================================================
+
+\begin{frame}{Why Split Data?}
+\textbf{Problem:} If we train and test on the same data, the model can memorize instead of learning.
+
+\vspace{0.3cm}
+\begin{columns}
+\column{0.5\textwidth}
+\textbf{Without Splitting:}
+\begin{itemize}
+    \item Train accuracy: 99\%
+    \item Test accuracy: 60\%
+    \item Model has ``overfitted''
+\end{itemize}
+
+\column{0.5\textwidth}
+\textbf{With Splitting:}
+\begin{itemize}
+    \item Train: 70\% of data
+    \item Test: 30\% of data
+    \item True performance on unseen data
+\end{itemize}
+\end{columns}
+
+\vspace{0.3cm}
+\textbf{Stratification:} Keep same class distribution in both splits (important for imbalanced data)
+\end{frame}
+
+\begin{frame}{Data Split in Practice}
+\textbf{Our Dataset:}
+\begin{itemize}
+    \item 299 total samples
+    \item 203 survived (68\%)
+    \item 96 died (32\%)
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{70/30 Split with Stratification:}
+\begin{itemize}
+    \item Training: 209 samples (68\% survived, 32\% died)
+    \item Test: 90 samples (68\% survived, 32\% died)
+    \item \textbf{Important:} Use training set statistics to normalize test set!
+\end{itemize}
+\end{frame}
+
+%=============================================================================
+\section{Feature Scaling}
+%=============================================================================
+
+\begin{frame}{Z-Score Normalization (Reminder)}
+\textbf{Why:} Distance-based algorithms need features on same scale
+
+\vspace{0.2cm}
+$$z = \frac{x - \mu}{\sigma}$$
+
+\vspace{0.3cm}
+\textbf{Important:} Compute $\mu$ and $\sigma$ on \textbf{training data only}, then apply to test data
+
+\vspace{0.3cm}
+\textbf{Code Pattern:}
+\begin{enumerate}
+    \item Split data into X\_train, X\_test, y\_train, y\_test
+    \item Compute normalization from X\_train
+    \item Apply to both X\_train \textbf{and} X\_test
+    \item Train models on normalized X\_train
+    \item Evaluate on normalized X\_test
+\end{enumerate}
+\end{frame}
+
+%=============================================================================
+\section{Classification Algorithms}
+%=============================================================================
+
+\begin{frame}{Logistic Regression}
+\textbf{Despite the name:} This is a \textbf{classification} algorithm
+
+\vspace{0.3cm}
+\textbf{How It Works:}
+\begin{itemize}
+    \item Models probability of each class using sigmoid curve
+    \item Finds a \textbf{linear} decision boundary
+    \item Outputs probability scores (0 to 1)
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Advantages:}
+\begin{itemize}
+    \item Fast to train
+    \item Interpretable coefficients
+    \item Good baseline model
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Disadvantages:}
+\begin{itemize}
+    \item Can't capture non-linear patterns
+    \item Assumes features are roughly linearly related to outcome
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Random Forest}
+\textbf{Ensemble Method:} Combines many decision trees
+
+\vspace{0.3cm}
+\textbf{How It Works:}
+\begin{enumerate}
+    \item Creates multiple random subsets of training data (sampling with replacement)
+    \item Trains a decision tree on each subset
+    \item Each tree votes on the prediction
+    \item Majority vote = final prediction
+\end{enumerate}
+
+\vspace{0.3cm}
+\textbf{Advantages:}
+\begin{itemize}
+    \item Captures non-linear relationships
+    \item Generally more accurate than single trees
+    \item Provides feature importance scores
+    \item Less prone to overfitting
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Disadvantages:}
+\begin{itemize}
+    \item Less interpretable than logistic regression
+    \item Slower to train
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Support Vector Machines (SVM)}
+\textbf{Goal:} Find the best boundary that separates classes with maximum margin
+
+\vspace{0.3cm}
+\textbf{Kernels:}
+\begin{itemize}
+    \item \textbf{Linear:} Simple, straight-line boundary
+    \item \textbf{RBF (Radial Basis Function):} Non-linear, flexible boundary
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Advantages:}
+\begin{itemize}
+    \item Works well with non-linear data (RBF kernel)
+    \item Effective in high-dimensional spaces
+    \item Robust to outliers
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Disadvantages:}
+\begin{itemize}
+    \item Slower to train than RF
+    \item Less interpretable
+    \item Requires careful kernel selection
+\end{itemize}
+\end{frame}
+
+\begin{frame}{K-Nearest Neighbors (KNN)}
+\textbf{Simple Idea:} Classify based on nearest neighbors
+
+\vspace{0.3cm}
+\textbf{How It Works:}
+\begin{enumerate}
+    \item For a new sample, find k nearest training samples
+    \item Majority class among neighbors = prediction
+\end{enumerate}
+
+\vspace{0.3cm}
+\textbf{Advantages:}
+\begin{itemize}
+    \item Very simple to understand
+    \item No training phase (lazy learner)
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Disadvantages:}
+\begin{itemize}
+    \item Slow prediction time
+    \item Sensitive to feature scaling
+    \item Needs careful k selection
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Default k=5}, but should be tuned
+\end{frame}
+
+%=============================================================================
+\section{Model Evaluation Metrics}
+%=============================================================================
+
+\begin{frame}{Classification Metrics}
+\textbf{Confusion Matrix:}
+\begin{table}
+\centering
+\begin{tabular}{l|cc}
+& Predicted 0 & Predicted 1 \\
+\hline
+Actual 0 & TN & FP \\
+Actual 1 & FN & TP \\
+\end{tabular}
+\end{table}
+
+\vspace{0.3cm}
+\textbf{Common Metrics:}
+\begin{itemize}
+    \item \textbf{Accuracy:} (TP + TN) / Total [NOT great for imbalanced data]
+    \item \textbf{Precision:} TP / (TP + FP) [Of predicted positives, how many are correct?]
+    \item \textbf{Recall:} TP / (TP + FN) [Of actual positives, how many did we find?]
+    \item \textbf{F1-Score:} Harmonic mean of precision and recall
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{For imbalanced data:} Use F1, precision, or recall instead of accuracy
+\end{frame}
+
+\begin{frame}{ROC-AUC Curve}
+\textbf{ROC:} Receiver Operating Characteristic
+
+\vspace{0.3cm}
+\textbf{What It Shows:}
+\begin{itemize}
+    \item X-axis: False Positive Rate (FPR)
+    \item Y-axis: True Positive Rate (TPR)
+    \item Diagonal line = random classifier (AUC = 0.5)
+    \item Curve above diagonal = good classifier (AUC > 0.5)
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{AUC Score:}
+\begin{itemize}
+    \item 0.5 = random guessing
+    \item 0.7-0.8 = good
+    \item 0.8-0.9 = very good
+    \item >0.9 = excellent
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Advantage:} Independent of class threshold, good for imbalanced data
+\end{frame}
+
+%=============================================================================
+\section{Model Comparison}
+%=============================================================================
+
+\begin{frame}{Comparing Models}
+\textbf{Standard Practice:} Train multiple models and compare on test set
+
+\vspace{0.3cm}
+\textbf{Models to Try:}
+\begin{enumerate}
+    \item Logistic Regression (baseline)
+    \item Random Forest
+    \item SVM (Linear and RBF kernels)
+    \item KNN (with different k values)
+\end{enumerate}
+
+\vspace{0.3cm}
+\textbf{Evaluation Strategy:}
+\begin{enumerate}
+    \item Train on identical training sets
+    \item Evaluate on identical test sets
+    \item Compare: Accuracy, Precision, Recall, F1, ROC-AUC
+    \item Pick best overall model (or best for your use case)
+\end{enumerate}
+
+\vspace{0.3cm}
+\textbf{Question:} Does highest accuracy = best model? Not always! Consider precision vs recall tradeoffs.
+\end{frame}
+
+\begin{frame}{Key Insights for This Dataset}
+\textbf{Finding from Research (Chicco \& Jurman 2020):}
+\begin{itemize}
+    \item Random Forest with all 13 features: 85\% accuracy
+    \item Random Forest with only 2 features (ejection\_fraction + serum\_creatinine): 82\% accuracy
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Lesson:} More features $\neq$ better model!
+
+\vspace{0.3cm}
+\textbf{This Week:}
+\begin{enumerate}
+    \item Build multiple classifiers
+    \item Evaluate performance
+    \item Understand when each model excels
+    \item No need to optimize everything---focus on learning!
+\end{enumerate}
+\end{frame}
+
+%=============================================================================
+\section{Implementation Steps}
+%=============================================================================
+
+\begin{frame}{Step-by-Step Implementation}
+\textbf{1. Load \& Prepare Data}
+\begin{itemize}
+    \item Load CSV, drop the `time' column
+    \item Separate features (X) and target (y)
+\end{itemize}
+
+\textbf{2. Train/Test Split}
+\begin{itemize}
+    \item 70\% train, 30\% test, stratified
+\end{itemize}
+
+\textbf{3. Normalize}
+\begin{itemize}
+    \item Z-score normalization on training stats
+\end{itemize}
+
+\textbf{4. Train Models}
+\begin{itemize}
+    \item Logistic Regression, Random Forest, SVM, KNN
+\end{itemize}
+
+\textbf{5. Evaluate}
+\begin{itemize}
+    \item Accuracy, Precision, Recall, F1, ROC-AUC
+\end{itemize}
+
+\textbf{6. Compare}
+\begin{itemize}
+    \item Which model performs best?
+\end{itemize}
+\end{frame}
+
+%=============================================================================
+\section{Common Pitfalls}
+%=============================================================================
+
+\begin{frame}{Common Mistakes to Avoid}
+\textbf{1. Data Leakage}
+\begin{itemize}
+    \item Using test data statistics for normalization [BAD]
+    \item Training on test data [BAD]
+\end{itemize}
+
+\textbf{2. Overfitting}
+\begin{itemize}
+    \item Model memorizes training data
+    \item Train accuracy 99\%, test accuracy 60\%
+\end{itemize}
+
+\textbf{3. Wrong Metrics for Imbalanced Data}
+\begin{itemize}
+    \item Using accuracy when data is imbalanced (68\% vs 32\%)
+    \item A model that always predicts `0' gets 68\% accuracy!
+\end{itemize}
+
+\textbf{4. Forgetting to Normalize}
+\begin{itemize}
+    \item Some algorithms (SVM, KNN) require normalized features
+\end{itemize}
+
+\textbf{5. Not Comparing to Baseline}
+\begin{itemize}
+    \item Always train a simple model first (logistic regression)
+\end{itemize}
+\end{frame}
+
+%=============================================================================
+\section{Summary}
+%=============================================================================
+
+\begin{frame}{This Week's Learning Goals}
+\begin{enumerate}
+    \item Understand supervised learning vs unsupervised
+    \item Properly split data and avoid data leakage
+    \item Train multiple classification algorithms
+    \item Evaluate models with appropriate metrics
+    \item Compare models and understand trade-offs
+\end{enumerate}
+
+\vspace{0.5cm}
+\textbf{Outcome:} You'll build a machine learning pipeline to predict heart failure outcomes and understand which algorithms work best for this problem.
+
+\vspace{0.5cm}
+\textbf{Next Steps:} Explore hyperparameter tuning, cross-validation, and feature selection in future work.
+\end{frame}
+
+\end{document}
