@@ -54,15 +54,15 @@ Interactive Jupyter notebooks (also available as markdown guides) for [Git basic
 
 | Week | Topic | Links |
 | - | - | - |
-| 1 | Data Exploration | [Notebook](Week1.ipynb), [Seaborn Docs](https://seaborn.pydata.org/), [Pandas Docs](https://pandas.pydata.org/docs/) |
-| 2 | Statistical Analysis | [Notebook](Week2.ipynb), [Slides](slides/week_2.pdf), [Scipy Stats](https://docs.scipy.org/doc/scipy/reference/stats.html), [Statsmodels VIF](https://www.statsmodels.org/stable/generated/statsmodels.stats.outliers_influence.variance_inflation_factor.html) |
-| 3 | Unsupervised Learning | [Notebook](Week3.ipynb), [Slides](slides/week_3.pdf), [PCA Guide](https://scikit-learn.org/stable/modules/decomposition.html#pca), [Clustering](https://scikit-learn.org/stable/modules/clustering.html) |
-| 4 | Supervised Learning | [Notebook](Week4.ipynb), [Slides](slides/week_4.pdf), [Scikit-learn Classifiers](https://scikit-learn.org/stable/supervised_learning.html), [Model Evaluation](https://scikit-learn.org/stable/modules/model_evaluation.html) |
-| 5 | Hyperparameter Optimization | [Notebook](Week5.ipynb), [Slides](slides/week_5.pdf), [Optuna Docs](https://optuna.readthedocs.io/), [GridSearchCV](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GridSearchCV.html) |
-| 6 | Ensemble Methods & Boosting | [Notebook](Week6.ipynb), [Slides](slides/week_6.pdf), [LightGBM Docs](https://lightgbm.readthedocs.io/), [Chicco & Jurman (2020)](https://bmcmedinformdecismak.biomedcentral.com/articles/10.1186/s12911-020-1023-5) |
-| 7 | Feature Selection Methods | [Notebook](Week7.ipynb), [Scikit-learn Feature Selection](https://scikit-learn.org/stable/modules/feature_selection.html) |
-| 8 | Deep Learning for Medical Data | [Notebook](Week8.ipynb), [TensorFlow Docs](https://www.tensorflow.org/), [Keras API](https://keras.io/), [Understanding Neural Networks](https://colah.github.io/posts/2014-03-NN-Manifolds-Topology/) |
-| 9 | AI Model Interpretation (PLS-DA & SHAP) | [Notebook](Week9.ipynb), [Slides](slides/week_9.pptx), [SHAP Docs](https://shap.readthedocs.io/), [PLS-DA Guide](https://scikit-learn.org/stable/modules/cross_decomposition.html) |
+| 1 | Data Exploration | [Notebook](week_1.ipynb), [Seaborn Docs](https://seaborn.pydata.org/), [Pandas Docs](https://pandas.pydata.org/docs/) |
+| 2 | Statistical Analysis | [Notebook](week_2.ipynb), [Slides](slides/week_2_slides.pdf), [Scipy Stats](https://docs.scipy.org/doc/scipy/reference/stats.html), [Statsmodels VIF](https://www.statsmodels.org/stable/generated/statsmodels.stats.outliers_influence.variance_inflation_factor.html) |
+| 3 | Unsupervised Learning | [Notebook](week_3.ipynb), [Slides](slides/week_3_slides.pdf), [PCA Guide](https://scikit-learn.org/stable/modules/decomposition.html#pca), [Clustering](https://scikit-learn.org/stable/modules/clustering.html) |
+| 4 | Supervised Learning | [Notebook](week_4.ipynb), [Slides](slides/week_4_slides.pdf), [Scikit-learn Classifiers](https://scikit-learn.org/stable/supervised_learning.html), [Model Evaluation](https://scikit-learn.org/stable/modules/model_evaluation.html) |
+| 5 | Hyperparameter Optimization | [Notebook](week_5.ipynb), [Slides](slides/week_5_slides.pdf), [Optuna Docs](https://optuna.readthedocs.io/), [GridSearchCV](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GridSearchCV.html) |
+| 6 | Ensemble Methods & Boosting | [Notebook](week_6.ipynb), [Slides](slides/week_6_slides.pdf), [LightGBM Docs](https://lightgbm.readthedocs.io/), [Chicco & Jurman (2020)](https://bmcmedinformdecismak.biomedcentral.com/articles/10.1186/s12911-020-1023-5) |
+| 7 | Feature Selection Methods | [Notebook](week_7.ipynb), [Scikit-learn Feature Selection](https://scikit-learn.org/stable/modules/feature_selection.html) |
+| 8 | Deep Learning for Medical Data | [Notebook](week_8.ipynb), [TensorFlow Docs](https://www.tensorflow.org/), [Keras API](https://keras.io/), [Understanding Neural Networks](https://colah.github.io/posts/2014-03-NN-Manifolds-Topology/) |
+| 9 | AI Model Interpretation (PLS-DA & SHAP) | [Notebook](week_9.ipynb), [Slides](slides/week_9_slides.pptx), [SHAP Docs](https://shap.readthedocs.io/), [PLS-DA Guide](https://scikit-learn.org/stable/modules/cross_decomposition.html) |
 
 ## Research Background
 
