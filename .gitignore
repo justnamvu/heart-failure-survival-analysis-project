@@ -1,0 +1,38 @@
+# Virtual environment
+venv/
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.Python
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data (if large)
+*.csv.gz
+
+# LaTeX auxiliary files
+*.aux
+*.nav
+*.out
+*.snm
+*.toc
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+
+# Misc
+*.log
+.env
