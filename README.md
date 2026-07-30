@@ -68,7 +68,7 @@ Interactive Jupyter notebooks (also available as markdown guides) for [Git basic
 
 This project is based on the paper:
 
-> **Chicco D, Jurman G. Machine learning can predict survival of patients with heart failure from serum creatinine and ejection fraction alone. BMC Med Inform Decis Mak. 2020 Feb 3;20(1):16. doi: 10.1186/s12911-020-1023-5. PMID: 32013925; PMCID: PMC6998201.**
+> **Chicco, D., Jurman, G. Machine learning can predict survival of patients with heart failure from serum creatinine and ejection fraction alone. BMC Med Inform Decis Mak 20, 16 (2020). https://doi.org/10.1186/s12911-020-1023-5**
 
 Key Findings from the Paper:
 - Applied several ML classifiers (Random Forest, Gradient Boosting, SVM, etc.) to predict survival
@@ -81,8 +81,6 @@ Clinical Relevance:
 - Serum creatinine indicates kidney function, often impaired in heart failure patients
 - Ejection fraction measures heart pumping efficiency, a direct indicator of cardiac health
 - These two biomarkers are routinely measured and can guide clinical decision-making
-
-[Read the full paper](https://bmcmedinformdecismak.biomedcentral.com/articles/10.1186/s12911-020-1023-5)
 
 ## Resources
 
