@@ -10,39 +10,39 @@ Survival analysis of heart failure patients to identify key factors that disting
 <br>
 Heart failure clinical records from 299 patients with 13 features including age, ejection fraction, serum creatinine, and follow-up time. Binary outcome: survival or death.
 
-**Week 1: Data Exploration** (<small>`Week1.ipynb`</small>)
+**Week 1: Data Exploration** (<small>`week_1.ipynb`</small>)
 <br>
 Introduction to the dataset, exploratory data analysis, and visualization techniques using Pandas, Seaborn, and Matplotlib.
 
-**Week 2: Statistical Analysis** (<small>`Week2.ipynb`</small>)
+**Week 2: Statistical Analysis** (<small>`week_2.ipynb`</small>)
 <br>
 Hypothesis testing (T-test, Mann-Whitney U), correlation analysis, multiple testing correction (FDR), feature variance analysis, and Variance Inflation Factor (VIF) for detecting multicollinearity.
 
-**Week 3: Unsupervised Learning** (<small>`Week3.ipynb`</small>)
+**Week 3: Unsupervised Learning** (<small>`week_3.ipynb`</small>)
 <br>
 Data normalization (Z-score), dimensionality reduction with PCA, K-Means clustering, hierarchical (agglomerative) clustering, confusion matrices, silhouette scores, and the elbow method.
 
-**Week 4: Supervised Learning** (<small>`Week4.ipynb`</small>)
+**Week 4: Supervised Learning** (<small>`week_4.ipynb`</small>)
 <br>
 Train/test splitting with stratification, feature normalization, and classification algorithms including Logistic Regression, Random Forest, Support Vector Machines (SVM), and K-Nearest Neighbors (KNN). Model evaluation using accuracy, precision, recall, and F1-score metrics.
 
-**Week 5: Hyperparameter Optimization** (<small>`Week5.ipynb`</small>)
+**Week 5: Hyperparameter Optimization** (<small>`week_5.ipynb`</small>)
 <br>
 Advanced techniques for tuning ML models using GridSearchCV, Random Search, and Bayesian Optimization with Optuna. Learn to efficiently search hyperparameter space and find optimal model configurations.
 
-**Week 6: Ensemble Methods & Boosting** (<small>`Week6.ipynb`</small>)
+**Week 6: Ensemble Methods & Boosting** (<small>`week_6.ipynb`</small>)
 <br>
 From Random Forest to Gradient Boosting to LightGBM. Learn how ensemble methods combine weak learners into strong predictors. Includes hyperparameter tuning with Optuna, evaluation with 4 metrics, and hands-on exercises.
 
-**Week 7: Feature Selection Methods** (<small>`Week7.ipynb`</small>)
+**Week 7: Feature Selection Methods** (<small>`week_7.ipynb`</small>)
 <br>
 Why fewer features often outperform more: Lasso (L1 penalty), Elastic Net (L1+L2), and MRMR filter method. Learn to identify which clinical features truly drive heart failure survival prediction.
 
-**Week 8: Deep Learning for Medical Data** (<small>`Week8.ipynb`</small>)
+**Week 8: Deep Learning for Medical Data** (<small>`week_8.ipynb`</small>)
 <br>
 Introduction to deep learning with Convolutional Neural Networks (CNNs) and Long Short-Term Memory (LSTMs). Learn neural network fundamentals, backpropagation, activation functions, and how to apply deep learning to clinical prediction tasks.
 
-**Week 9: AI Model Interpretation (PLS-DA & SHAP)** (<small>`Week9.ipynb`</small>)
+**Week 9: AI Model Interpretation (PLS-DA & SHAP)** (<small>`week_9.ipynb`</small>)
 <br>
 Interpretability and explainability in ML. Partial Least Squares Discriminant Analysis (PLS-DA) for supervised dimensionality reduction, and SHAP (SHapley Additive exPlanations) for understanding model predictions and feature importance in black-box models.
 
@@ -70,7 +70,7 @@ This project is based on the paper:
 
 > **Chicco, D., Jurman, G. Machine learning can predict survival of patients with heart failure from serum creatinine and ejection fraction alone. BMC Med Inform Decis Mak 20, 16 (2020). https://doi.org/10.1186/s12911-020-1023-5**
 
-Key Findings from the Paper:
+Key Findings:
 - Applied several ML classifiers (Random Forest, Gradient Boosting, SVM, etc.) to predict survival
 - Discovered that **serum creatinine** and **ejection fraction** alone achieve strong predictive performance
 - Random Forest achieved the best results with Matthews Correlation Coefficient (MCC) of 0.418
